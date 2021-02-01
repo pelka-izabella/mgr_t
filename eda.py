@@ -4,6 +4,7 @@ import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.manifold import TSNE
 # %%
 ## Setup
 in_dir = 'data'
@@ -48,3 +49,19 @@ fig.tight_layout()
 plt.show()
 
 # %%
+# build term document matrix
+V = len(df)
+N = len(df)
+sentences = df['review']
+
+# create raw counts first
+A = np.zeros((V, N))
+print("V:", V, "N:", N)
+j = 0
+for sentence in sentences:
+    for i in sentence:
+        A[i,j] += 1
+    j += 1
+print("finished getting raw counts")
+
+#%%

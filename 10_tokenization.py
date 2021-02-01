@@ -5,6 +5,13 @@ import os
 from stop_words import get_stop_words
 import re
 from nltk.tokenize import word_tokenize 
+import morfeusz2
+import itertools
+from stempel import StempelStemmer # pystempel package
+# import pl_stemmer as stem
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+from collections import Counter
 # %%
 ## Setup
 in_dir = 'data'
@@ -15,9 +22,11 @@ raw_dataset = 'prepped.csv'
 df = pd.read_csv(os.path.join(in_dir, raw_dataset))
 df.head()
 # %%
-# getting rid of stopwords (także, ja, bardzo etc.), links, punctuation and so on
+# getting rid of stopwords, links, punctuation and so on
 
 stop_words = get_stop_words('polish')
+new_stopwords = ['i', 'a', 'w', 'z', 'ze']
+stop_words.extend(new_stopwords)
 
 def remove_stopwords(text):
     text = ' '.join([i for i in text.split(' ') if i not in stop_words])
@@ -37,17 +46,6 @@ def clean_text(text):
     text = remove_stopwords(text)
     return text
 # %%
-test = df['review'].to_list()
-
-# for display purposes
-# for i in test:
-#     print(i)
-#     print("-"*10)
-#     print("clean_text \n")
-#     print(clean_text(i))
-#     print("\n")
-#     print("*"*10)
-
 
 df['clean_text'] = df['review'].apply(clean_text)
 
@@ -62,8 +60,81 @@ df['clean_text'] = df['review'].apply(clean_text)
 df['tokenized_text'] = [word_tokenize(i) for i in df['clean_text'].to_list()]
 df.head()
 
- # %%
-out_df = 'tokenized.csv'
-df.to_csv(os.path.join(out_dir, out_df))
+# %%
+# lemmatization
+morf = morfeusz2.Morfeusz()
+
+df['lem'] = ""
+id=0
+
+
+for rev in df['tokenized_text']: # iterating by reviews
+    res = {}
+    for word in rev: # iterating by words in a review
+        analysis = morf.analyse(word) # different word forms
+        trzon = []
+        for interpretation in analysis: # analyzing each form
+            trzon.append(interpretation[2][1].split(':')[0]) # getting rid of word endings
+            trzon = list(set(trzon)) # only unique forms
+            stem = dict(zip(itertools.repeat(word), trzon)) # matching one base form to the original word in review
+            res.update(stem) 
+    
+    df['lem'][id] = list(res.values())
+
+    id +=1
+
+# note to self: stem = dict(zip(...)) leaves last form
+df.head()
 
 # %%
+# stemming
+# stemming to inny sposób doprowadzania słów do podstawowej, ujednoliconej wersji - pozbawia słowa formantów, zostawiając tylko 
+# df['trzony'] = ''
+# stemmer = StempelStemmer.default()
+# # stemmer = StempelStemmer.polimorf()
+
+# id=0
+
+# for rev in df['tokenized_text']: # iterowanie po recenzjach
+#     trzon=[]
+#     for word in rev: # iterowanie po slowach
+#         trzon.append(stemmer.stem(word))
+            
+#     df['trzony'][id] = trzon
+#     id +=1
+
+# df.head()
+
+
+# #stem("zielony")
+# # cos ten stemmer przestal dzialac
+
+#%%
+# wordcloud
+lista_slow=[]
+for rec in df.lem:
+    for w in rec:
+        lista_slow.append(w)
+
+#slowa = " ".join([i for i in lista_slow])
+# list of unique words and frequencies
+counter=Counter(lista_slow)
+# deleting the word być as it doesn't add anything interesting to the picture
+del counter["być"]
+#%%
+wordcloud = WordCloud(width = 800, height = 800, 
+                background_color ='black',
+                min_font_size = 10, colormap='YlGn', collocations=False).generate_from_frequencies(counter) 
+  
+# plot the WordCloud image                        
+plt.figure(figsize = (8, 8), facecolor = None) 
+plt.imshow(wordcloud) 
+plt.axis("off") 
+plt.tight_layout(pad = 0) 
+  
+plt.show() 
+
+  # %%
+ # write file
+out_df = 'lemmatized.csv'
+df.to_csv(os.path.join(out_dir, out_df))
