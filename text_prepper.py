@@ -17,28 +17,33 @@ class PrepareText:
         self
     
     @staticmethod
-    def clean_text(text):
+    def clean_text(df, in_col='review', out_col='clean_text'):
         '''This function removes URL, punctuation marks and digits, then converts the text into lowercase and applies remove_stopwords'''
         
-        text = re.sub('https?://[A-Za-z0-9./]*','', text) # Remove https..(URL)
-        text = re.sub('&amp; ','',text) # Removed ampersand 
-        text = re.sub('[0-9]*','', text) # Removed digits
-        text = re.sub('[^\w+]',' ',text) # remove non words
-        text = text.strip().lower()
+        df[out_col] = df[in_col].str.replace('https?://[A-Za-z0-9./]*','')# Remove https..(URL)
+        df[out_col] = df[out_col].str.replace('&amp;','') # Removed ampersand 
+        df[out_col] = df[out_col].str.replace('[0-9]*','') # Removed digits
+        df[out_col] = df[out_col].str.replace(r'[^\w\s]*','') # remove non words
+        df[out_col] = df[out_col].str.lower() # lowercasing 
+        
+        df[out_col] = df[out_col].str.split() # splitting into words
+
+        # defining stopwords
         stop_words = get_stop_words('polish')
         new_stopwords = ['i', 'a', 'w', 'z', 'ze']
         stop_words.extend(new_stopwords)
-        text = ' '.join([i for i in text.split(' ') if i not in stop_words])
-        
-        return text
 
+        # removing stopwords
+        df[out_col] = df[out_col].apply(lambda x: [item for item in x if item not in stop_words])
+        
+        return df
 
     @staticmethod
     def tokenize(df, in_col='clean_text', out_col='tokenized', drop_incol=False):
         """Tokenizing using word tokenizer"""
         df[out_col] = [word_tokenize(i) for i in df[in_col].to_list()]
         if drop_incol:
-            df = df.drop(in_col)
+            df = df.drop(in_col, axis=1)
         return df
 
     @staticmethod
@@ -65,7 +70,7 @@ class PrepareText:
             id +=1
         
         if drop_incol:
-            df = df.drop(in_col)
+            df = df.drop(in_col, axis=1)
 
         return df
 
