@@ -30,11 +30,16 @@ class PrepareText:
 
         # defining stopwords
         stop_words = get_stop_words('polish')
-        new_stopwords = ['i', 'a', 'w', 'z', 'ze']
+        new_stopwords = ['i', 'a', 'w', 'z', 'ze', 'ten']
         stop_words.extend(new_stopwords)
 
         # removing stopwords
         df[out_col] = df[out_col].apply(lambda x: [item for item in x if item not in stop_words])
+
+        # # removing infrequent words
+        # freq = pd.Series(' '.join(df[out_col])).value_counts()[-10:]
+        # freq = list(freq.index)
+        # df[out_col] = df[out_col].apply(lambda x:[item for item in x if item not in freq])
         
         return df
 
@@ -47,7 +52,7 @@ class PrepareText:
         return df
 
     @staticmethod
-    def lemmatize(df, in_col='clean_text', out_col='lem', drop_incol=False):
+    def lemmatize(df, in_col='clean_text', out_col='lem', drop_incol=False, listed=False):
         """This function turns Polish words into their most basic form. The POS of the output is not being defined"""
 
         morf = morfeusz2.Morfeusz()
@@ -65,8 +70,10 @@ class PrepareText:
                     # note to self: stem = dict(zip(...)) leaves last form
                     stem = dict(zip(itertools.repeat(word), trzon)) # matching one base form to the original word in review
                     res.update(stem) 
-            
-            df[out_col][id] = list(res.values())
+            if listed:
+                df[out_col][id] = list(res.values())
+            else:
+                df[out_col][id] = " ".join(list(res.values()))
             id +=1
         
         if drop_incol:
