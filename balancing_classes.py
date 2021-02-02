@@ -1,11 +1,14 @@
 #%% 
-# TO WSZYSTPK
 import pandas as pd
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.utils import resample
+from collections import Counter
+from imblearn.over_sampling import SMOTE
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.pipeline import Pipeline
 # %%
 ## Setup
 in_dir = 'data'
@@ -39,16 +42,11 @@ print("Count of classes in upsampling \n",df_upsampled.label.value_counts())
 # %%
 # SMOTE
 # Oversample with SMOTE and random undersample for imbalanced dataset
-from collections import Counter
-from sklearn.datasets import make_classification
-from imblearn.over_sampling import SMOTE
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.pipeline import Pipeline
-from matplotlib import pyplot
-from numpy import where
+
 # define dataset
 X = df['review']
 y = df['label']
+#%%
 # summarize class distribution
 counter = Counter(y)
 print(counter)
@@ -67,8 +65,8 @@ counter = Counter(y)
 print(counter)
 # scatter plot of examples by class label
 for label, _ in counter.items():
-	row_ix = where(y == label)[0]
-	pyplot.scatter(X[row_ix, 0], X[row_ix, 1], label=str(label))
-pyplot.legend()
-pyplot.show()
+	row_ix = np.where(y == label)[0]
+	plt.scatter(X[row_ix, 0], X[row_ix, 1], label=str(label))
+plt.legend()
+plt.show()
 # %%
