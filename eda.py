@@ -1,10 +1,14 @@
 #%% 
+from text_prepper import PrepareText
 import pandas as pd
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+from wordcloud import WordCloud
+from collections import Counter
 from sklearn.manifold import TSNE
+
 # %%
 ## Setup
 in_dir = 'data'
@@ -48,20 +52,34 @@ ax.set_title(r'Histogram etykiet')
 fig.tight_layout()
 plt.show()
 
-# %%
-# build term document matrix
-V = len(df)
-N = len(df)
-sentences = df['review']
-
-# create raw counts first
-A = np.zeros((V, N))
-print("V:", V, "N:", N)
-j = 0
-for sentence in sentences:
-    for i in sentence:
-        A[i,j] += 1
-    j += 1
-print("finished getting raw counts")
 
 #%%
+# cleaning, tokenizing and lemmatizing
+prep = PrepareText()
+df = prep.clean_text(df, in_col='review', out_col='clean_text')
+df = prep.lemmatize(df, in_col='clean_text', out_col='lem')
+df.head()
+
+#%%
+# wordcloud
+lista_slow=[]
+for rec in df.lem:
+    for w in rec:
+        lista_slow.append(w)
+
+# list of unique words and frequencies
+counter=Counter(lista_slow)
+# deleting the word być as it doesn't add anything interesting to the picture
+del counter["być"]
+
+wordcloud = WordCloud(width = 800, height = 800, 
+                background_color ='black',
+                min_font_size = 10, colormap='YlGn', collocations=False).generate_from_frequencies(counter) 
+  
+# plot the WordCloud image                        
+plt.figure(figsize = (8, 8), facecolor = None) 
+plt.imshow(wordcloud) 
+plt.axis("off") 
+plt.tight_layout(pad = 0) 
+  
+plt.show() 

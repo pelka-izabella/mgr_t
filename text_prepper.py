@@ -41,13 +41,13 @@ class PrepareText:
     @staticmethod
     def tokenize(df, in_col='clean_text', out_col='tokenized', drop_incol=False):
         """Tokenizing using word tokenizer"""
-        df[out_col] = [word_tokenize(i) for i in df[in_col].to_list()]
+        df[out_col] = [word_tokenize(i) for i in df[in_col][i].to_list()]
         if drop_incol:
             df = df.drop(in_col, axis=1)
         return df
 
     @staticmethod
-    def lemmatize(df, in_col='tokenized', out_col='lem', drop_incol=False):
+    def lemmatize(df, in_col='clean_text', out_col='lem', drop_incol=False):
         """This function turns Polish words into their most basic form. The POS of the output is not being defined"""
 
         morf = morfeusz2.Morfeusz()
