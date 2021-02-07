@@ -121,14 +121,14 @@ if GRID:
 #%%
 # selected model
  
-# estimators = [
-#     ('svc', SVC(kernel='rbf')),  
-#     ('lr', LogisticRegression(random_state=42, n_jobs=-1, C=1, class_weight='balanced', max_iter=100))
-# ]
+estimators = [
+    ('svc', SVC(kernel='rbf')),  
+    ('lr', LogisticRegression(random_state=42, n_jobs=-1, C=1, class_weight='balanced', max_iter=100))
+]
 
-# final_estimator = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=50, class_weight='balanced')
+final_estimator = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=50, class_weight='balanced')
 
-# model = StackingClassifier(cv=3, estimators=estimators, final_estimator=final_estimator)
+model = StackingClassifier(cv=3, estimators=estimators, final_estimator=final_estimator)
 
 # model = LogisticRegression(random_state=42, n_jobs=-1, C=1, class_weight='balanced', max_iter=100)
 
@@ -136,16 +136,17 @@ if GRID:
 
 # model = RandomForestClassifier(random_state=42, n_jobs=-1,class_weight='balanced',n_estimators=100)
 
-#model = AdaBoostClassifier(random_state=42, learning_rate=0.9)
+# model = AdaBoostClassifier(random_state=42, learning_rate=0.9)
 
-model = ExtraTreesClassifier(random_state=42, n_jobs=-1, class_weight='balanced',n_estimators=100)
+#  model = ExtraTreesClassifier(random_state=42, n_jobs=-1, class_weight='balanced',n_estimators=100)
 
 #%% 
 
 model.fit(X_train, y_train)
 y_true, y_pred = y_test, model.predict(X_test)
 
- # %%
+# %%
+print(model, "\n")
 plot_confusion_matrix(y_true, y_pred)
 # %%
 print(model, "\n")
