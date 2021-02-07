@@ -57,11 +57,23 @@ plt.show()
 # cleaning, tokenizing and lemmatizing
 prep = PrepareText()
 df = prep.clean_text(df, in_col='review', out_col='clean_text')
-df = prep.lemmatize(df, in_col='clean_text', out_col='lem')
+df = prep.lemmatize(df, in_col='clean_text', out_col='lem', listed=True)
 df.head()
 
 #%%
 # wordcloud
+
+positive_revs=False
+negative_revs=True
+
+if positive_revs==negative_revs==True:
+    raise KeyError("Cannot filter out both positive aand negative")
+
+if positive_revs:
+    df = df[df['label'] == 1]
+if negative_revs:
+    df = df[df['label'] == 0]
+
 lista_slow=[]
 for rec in df.lem:
     for w in rec:
@@ -83,3 +95,4 @@ plt.axis("off")
 plt.tight_layout(pad = 0) 
   
 plt.show() 
+# %%
