@@ -16,9 +16,12 @@ from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSe
 
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, ExtraTreesClassifier, StackingClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
 
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, plot_roc_curve, roc_auc_score, matthews_corrcoef
+
+import tensorflow as tf
 #%%
 def plot_confusion_matrix(y_true, y_pred):
     cf_matrix = confusion_matrix(y_true, y_pred)
@@ -51,13 +54,19 @@ prep = PrepareText()
 df = prep.clean_text(df, in_col='review', out_col='clean_text')
 df = prep.lemmatize(df, in_col='clean_text', out_col='lem', listed=False)
 df.head()
-#%%
-# select features
-bow = CountVectorizer(max_features=1000, lowercase=True, ngram_range=(1,1),analyzer = "word")
-features = bow.fit_transform(df['lem']).toarray()
 
 #%%
-X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(df['lem'], labels, test_size=0.2, random_state=42, stratify=labels)
+
+#%%
+# select features
+# fit to train
+f = CountVectorizer(max_features=1000, lowercase=True, ngram_range=(1,1),analyzer = "word").fit(X_train)
+#f = TfidfVectorizer(max_features=1000, lowercase=True, ngram_range=(1,1),analyzer = "word", sublinear_tf=True)
+
+# transform test and train
+X_train = f.transform(X_train).toarray()
+X_test = f.transform(X_test).toarray()
 #%%
 GRID=True 
 
@@ -121,16 +130,16 @@ if GRID:
 #%%
 # selected model
  
-estimators = [
-    ('svc', SVC(kernel='rbf')),  
-    ('lr', LogisticRegression(random_state=42, n_jobs=-1, C=1, class_weight='balanced', max_iter=100))
-]
+# estimators = [
+#     ('svc', SVC(kernel='rbf')),  
+#     ('lr', LogisticRegression(random_state=42, n_jobs=-1, C=1, class_weight='balanced', max_iter=100))
+# ]
 
-final_estimator = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=50, class_weight='balanced')
+# final_estimator = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=50, class_weight='balanced')
 
-model = StackingClassifier(cv=3, estimators=estimators, final_estimator=final_estimator)
+# model = StackingClassifier(cv=3, estimators=estimators, final_estimator=final_estimator)
 
-# model = LogisticRegression(random_state=42, n_jobs=-1, C=1, class_weight='balanced', max_iter=100)
+model = LogisticRegression(random_state=42, n_jobs=-1, C=1, class_weight='None', max_iter=100)
 
 # model = SVC(random_state=42, kernel='rbf')
 
@@ -138,8 +147,9 @@ model = StackingClassifier(cv=3, estimators=estimators, final_estimator=final_es
 
 # model = AdaBoostClassifier(random_state=42, learning_rate=0.9)
 
-#  model = ExtraTreesClassifier(random_state=42, n_jobs=-1, class_weight='balanced',n_estimators=100)
+# model = ExtraTreesClassifier(random_state=42, n_jobs=-1, class_weight='balanced',n_estimators=100)
 
+#model = GaussianNB()
 #%% 
 
 model.fit(X_train, y_train)
@@ -162,4 +172,9 @@ print("F1 score: \t", round(f1_score(y_true, y_pred)*100, 4), "%")
 # Precision: Appropriate when minimizing false positives is the focus.
 # Recall: Appropriate when minimizing false negatives is the focus.
 # F1-measure, which weights precision and recall equally, is the variant most often used when learning from imbalanced data.
+
+#%%
+plot_roc_curve(model, X_test, y_test)
+# %%
+print(matthews_corrcoef(y_true, y_pred))
 # %%
