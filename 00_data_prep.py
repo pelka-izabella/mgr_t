@@ -46,6 +46,12 @@ df_text['id'] = df_text['variable'].str.split('/', expand=True)[1]
 df_text['type'] = df_text['variable'].str.split('/', expand=True)[2]
 df_text.drop(columns=['variable'], inplace=True)
 df_text
+#%%
+# range of dates
+df_text.loc[df_text['type'] == 'publishedDate']['value'].dropna().sort_values()
+
+# how many restaurants
+df_text['name'].nunique()
 # %%
 # some cleaning up
 df_text.set_index(['name', 'id'], inplace=True)
@@ -60,7 +66,7 @@ df_text_clean = df_text_clean.pivot_table(values='value', index=df_text_clean.in
 # adding the title of the review into the text
 df_text_clean['review'] = df_text_clean['title'] + " " + df_text_clean['text']
 df_text_clean.drop(columns=['title', 'text'], inplace=True)
-
+df_text_clean
 # %%
 # we'd like to see the reviews in Polish - since there is no review language indicator, let's try to detect it, otherwise, I'll use user location being in Poland as a proxy for now
 df_text_clean['lang'] = df_text_clean['review'].apply(detect)
