@@ -46,6 +46,8 @@ raw_dataset = 'prepped.csv'
 
 df = pd.read_csv(os.path.join(in_dir, raw_dataset), index_col='Unnamed: 0', dtype = {'rating':np.int32, 'review':np.object})
 
+#%%
+# clean
 df['label'] = 0
 df.loc[(df.rating == 4)|(df.rating == 5), "label"] = 1
 labels = df['label']
@@ -56,24 +58,31 @@ df = prep.lemmatize(df, in_col='clean_text', out_col='lem', listed=False)
 df.head()
 
 #%%
-X_train, X_test, y_train, y_test = train_test_split(df['lem'], labels, test_size=0.2, random_state=42, stratify=labels)
+X_train_raw, X_test_raw, y_train, y_test = train_test_split(df['lem'], labels, test_size=0.2, random_state=42, stratify=labels)
 
-#%%
 # select features
 # fit to train
-f = CountVectorizer(max_features=1000, lowercase=True, ngram_range=(1,1),analyzer = "word").fit(X_train)
-#f = TfidfVectorizer(max_features=1000, lowercase=True, ngram_range=(1,1),analyzer = "word", sublinear_tf=True)
+bow = CountVectorizer(max_features=10000, lowercase=True, ngram_range=(1,1),analyzer = "word")
+f = bow.fit(X_train_raw)
+# tf_idf = TfidfVectorizer(max_features=10000, lowercase=True, ngram_range=(1,1),analyzer = "word", sublinear_tf=True)
+# f = tf_idf.fit(X_train)
 
 # transform test and train
-X_train = f.transform(X_train).toarray()
-X_test = f.transform(X_test).toarray()
+X_train = f.transform(X_train_raw).toarray()
+X_test = f.transform(X_test_raw).toarray()
 #%%
 GRID=True 
 
 if GRID:
 
-    model = LogisticRegression(random_state=42, n_jobs=-1)
-    parameters = {'class_weight':('None', 'balanced'), 'C':[1, 2, 5], 'max_iter':[50,100,200]}
+    model = LogisticRegression(random_state=42, n_jobs=-1, solver='saga')
+    parameters = {'class_weight':('None', 'balanced'), 
+                    'C':[0.1, 0.5, 1, 2, 5], 
+                    'max_iter':[50,100,200],
+                    'penalty':['l1', 'l2', 'none']
+                    }
+
+
     # {'C': 1, 'class_weight': 'None', 'max_iter': 50}
     # {'C': 1, 'class_weight': 'balanced', 'max_iter': 100}
 
@@ -93,7 +102,7 @@ if GRID:
     # parameters = {'n_estimators' :[50, 100,200], 'class_weight':('None', 'balanced', 'balanced_subsample')}
     # {'class_weight': 'balanced', 'n_estimators': 100}
 
-    scores = ['f1'] # 'precision', 'recall'
+    scores = ['f1'] # 'precision', 'recall', 'accuracy'
 
     for score in scores:
         print(model)
@@ -101,15 +110,15 @@ if GRID:
         print()
 
         clf = RandomizedSearchCV(
-            model, parameters, scoring='%s_macro' % score
+            model, parameters, scoring=score
         )
         clf.fit(X_train, y_train)
 
-        print("Best parameters set found on development set:")
+        print("Best parameters set found on test set:")
         print()
         print(clf.best_params_)
         print()
-        print("Grid scores on development set:")
+        print("Grid scores on test set:")
         print()
         means = clf.cv_results_['mean_test_score']
         stds = clf.cv_results_['std_test_score']
@@ -129,52 +138,110 @@ if GRID:
 
 #%%
 # selected model
- 
-# estimators = [
-#     ('svc', SVC(kernel='rbf')),  
-#     ('lr', LogisticRegression(random_state=42, n_jobs=-1, C=1, class_weight='balanced', max_iter=100))
-# ]
 
-# final_estimator = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=50, class_weight='balanced')
 
-# model = StackingClassifier(cv=3, estimators=estimators, final_estimator=final_estimator)
+# model = GaussianNB()
 
-model = LogisticRegression(random_state=42, n_jobs=-1, C=1, class_weight='None', max_iter=100)
+model = LogisticRegression(random_state=42, n_jobs=-1, penalty= 'l1', max_iter= 100, class_weight = 'None', C= 2, solver='saga')
 
-# model = SVC(random_state=42, kernel='rbf')
 
-# model = RandomForestClassifier(random_state=42, n_jobs=-1,class_weight='balanced',n_estimators=100)
+# 0.960 (+/-0.002) for {'penalty': 'l1', 'max_iter': 200, 'class_weight': 'None', 'C': 1}
+# 0.959 (+/-0.004) for {'penalty': 'none', 'max_iter': 100, 'class_weight': 'balanced', 'C': 0.1}
+# 0.958 (+/-0.005) for {'penalty': 'none', 'max_iter': 50, 'class_weight': 'balanced', 'C': 1}
+# 0.961 (+/-0.001) for {'penalty': 'l1', 'max_iter': 100, 'class_weight': 'None', 'C': 2}
+# 0.960 (+/-0.003) for {'penalty': 'l1', 'max_iter': 50, 'class_weight': 'None', 'C': 2}
+# 0.959 (+/-0.003) for {'penalty': 'none', 'max_iter': 200, 'class_weight': 'balanced', 'C': 2}
+# 0.961 (+/-0.005) for {'penalty': 'none', 'max_iter': 50, 'class_weight': 'None', 'C': 0.1}
+# 0.961 (+/-0.002) for {'penalty': 'none', 'max_iter': 100, 'class_weight': 'None', 'C': 1}
+# 0.961 (+/-0.002) for {'penalty': 'none', 'max_iter': 100, 'class_weight': 'None', 'C': 2}
+# 0.961 (+/-0.005) for {'penalty': 'none', 'max_iter': 50, 'class_weight': 'None', 'C': 2}
 
-# model = AdaBoostClassifier(random_state=42, learning_rate=0.9)
 
-# model = ExtraTreesClassifier(random_state=42, n_jobs=-1, class_weight='balanced',n_estimators=100)
-
-#model = GaussianNB()
 #%% 
 
 model.fit(X_train, y_train)
 y_true, y_pred = y_test, model.predict(X_test)
+y_hat = model.predict(X_train)
 
 # %%
 print(model, "\n")
 plot_confusion_matrix(y_true, y_pred)
+plot_roc_curve(model, X_test, y_test)
 # %%
 print(model, "\n")
 print("Classification report \n", classification_report(y_true,y_pred))
-print("Accuracy: \t", round(accuracy_score(y_true, y_pred)*100, 4), "%")
+print("Accuracy: \t", round(accuracy_score(y_true, y_pred)*100, 2), "%")
 # Precision = TruePositives / (TruePositives + FalsePositives)
-print("Precision: \t", round(precision_score(y_true, y_pred)*100, 4), "%")
+print("Precision: \t", round(precision_score(y_true, y_pred)*100, 2), "%")
 # Recall = TruePositives / (TruePositives + FalseNegatives)
-print("Recall: \t", round(recall_score(y_true, y_pred)*100, 4), "%")
+print("Recall: \t", round(recall_score(y_true, y_pred)*100, 2), "%")
 # F-Measure = (2 * Precision * Recall) / (Precision + Recall)
-print("F1 score: \t", round(f1_score(y_true, y_pred)*100, 4), "%")
+print("F1 score: \t", round(f1_score(y_true, y_pred)*100, 2), "%")
+# MCC
+print("MCC : \t", round(matthews_corrcoef(y_true, y_pred)*100, 2), "%")
 
 # Precision: Appropriate when minimizing false positives is the focus.
 # Recall: Appropriate when minimizing false negatives is the focus.
 # F1-measure, which weights precision and recall equally, is the variant most often used when learning from imbalanced data.
 
 #%%
-plot_roc_curve(model, X_test, y_test)
+# Accuracy
+print(round(accuracy_score(y_true, y_pred)*100, 2), "%")
+# Precision = TruePositives / (TruePositives + FalsePositives)
+print(round(precision_score(y_true, y_pred)*100, 2), "%")
+# Recall = TruePositives / (TruePositives + FalseNegatives)
+print(round(recall_score(y_true, y_pred)*100, 2), "%")
+# F-Measure = (2 * Precision * Recall) / (Precision + Recall)
+print(round(f1_score(y_true, y_pred)*100, 2), "%")
+# MCC
+print(round(matthews_corrcoef(y_true, y_pred)*100, 2), "%")
+# AUC
+print(round(roc_auc_score(y_true, y_pred), 2))
+
+
 # %%
-print(matthews_corrcoef(y_true, y_pred))
+# %%
+print("Training se")
+plot_confusion_matrix(y_train, y_hat)
+plot_roc_curve(model, X_train, y_train)
+
+
+print("Accuracy: \t", round(accuracy_score(y_train, y_hat)*100, 2), "%")
+# Precision = TruePositives / (TruePositives + FalsePositives)
+print("Precision: \t", round(precision_score(y_train, y_hat)*100, 2), "%")
+# Recall = TruePositives / (TruePositives + FalseNegatives)
+print("Recall: \t", round(recall_score(y_train, y_hat)*100, 2), "%")
+# F-Measure = (2 * Precision * Recall) / (Precision + Recall)
+print("F1 score: \t", round(f1_score(y_train, y_hat)*100, 2), "%")
+# MCC
+print("MCC : \t", round(matthews_corrcoef(y_train, y_hat)*100, 2), "%")
+
+# Precision: Appropriate when minimizing false positives is the focus.
+# Recall: Appropriate when minimizing false negatives is the focus.
+# F1-measure, which weights precision and recall equally, is the variant most often used when learning from imbalanced data.
+# %%
+# feature importance
+importances = model.coef_[0] # for LR it's coefficients and not feature imp
+feat_labels = bow.get_feature_names()
+indices = np.argsort(importances)[::-1]
+
+# worst
+for f in range(len(feat_labels)-1, len(feat_labels)-11, -1):
+    print(feat_labels[indices[f]], "\t", importances[indices[f]])
+    #print("%2d) %-*s %f" % (f + 1, 30, feat_labels[indices[f]], importances[indices[f]]))
+print("_"*30)
+# best
+for f in range(10):
+    print(feat_labels[indices[f]], "\t", importances[indices[f]])
+    #print("%2d) %-*s %f" % (f + 1, 30, feat_labels[indices[f]], importances[indices[f]]))
+#%%
+plt.figure(figsize=(10,5))
+plt.title('Importances of features')
+plt.bar(range(X_train.shape[1]), importances[indices], align='center')
+plt.xticks(range(X_train.shape[1]), feat_labels[indices], rotation=90)
+plt.xlim([-1, X_train.shape[1]])
+plt.tight_layout()
+plt.show()
+# %%
+X_test[(y_test == 1) & (y_pred.T == 0)]
 # %%
