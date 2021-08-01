@@ -8,7 +8,7 @@ import numpy as np
 from wordcloud import WordCloud
 from collections import Counter
 from sklearn.manifold import TSNE
-
+import ast
 # %%
 ## Setup
 in_dir = 'data'
@@ -16,9 +16,17 @@ out_dir = 'data'
 #%%
 # dataset - all Kraków restaurants scraped from Tripadvisor by Apify on 2020-10-03 16:10:41 
 raw_dataset = 'prepped.csv'
-df = pd.read_csv(os.path.join(in_dir, raw_dataset), index_col='Unnamed: 0', dtype = {'rating':np.int32, 'review':np.object})
-df.head()
+df = pd.read_csv(os.path.join(in_dir, raw_dataset),  converters={'Unnamed: 0': ast.literal_eval}, dtype = {'rating':np.int32, 'review':np.object})
 
+new_col_list = ['restaurant','id']
+for n,col in enumerate(new_col_list):
+    df[col] = df['Unnamed: 0'].apply(lambda x: x[n])
+
+df = df.drop(['id', 'Unnamed: 0'],axis=1)
+df.set_index('restaurant', inplace=True)
+df.head()
+#%%
+df
 # %%
 def without_hue(plot, feature):
     total = len(feature)
@@ -29,7 +37,7 @@ def without_hue(plot, feature):
         ax.annotate(percentage, (x, y), size = 10)
     plt.show()
 
-ax = sns.countplot(df['rating'], color='forestgreen')
+ax = sns.countplot(df['rating'], color='navy')
 
 ax.set_xlabel('Ocena')
 ax.set_ylabel('Liczba recenzji')
@@ -79,10 +87,47 @@ df = prep.lemmatize(df, in_col='clean_text', out_col='lem', listed=True)
 df.head()
 
 #%%
+df['word_count'] = df['lem'].apply(lambda x: len(str(x).split()))
+
+# average word length
+def avg_word(sentence):
+    words = sentence.split()
+    return (sum(len(word) for word in words)/len(words))
+
+df['avg_word_len'] = df['review'].apply(lambda x: avg_word(x))
+
+# other features?
+#%%
+word_count = df.groupby('rating')['word_count'].mean().reset_index()
+plt.subplot()
+sns.barplot(x="rating", y="word_count", data=word_count,  color="navy")
+#.plot(kind='bar', figsize=(20,10))
+plt.xlabel('Ocena')
+plt.ylabel('Liczba słów w recenzji')
+plt.title('Rozkład średniej liczby słów w recenzji ze względu na ocenę')
+plt.show()
+
+#%%
+word_count = df.groupby('label')['word_count'].mean().reset_index()
+sns.barplot(x="label", y="word_count", data=word_count,  color="navy")
+#.plot(kind='bar', figsize=(20,10))
+plt.xlabel('Etykieta')
+plt.ylabel('Liczba słów w recenzji')
+plt.title('Rozkład średniej liczby słów w recenzji ze względu na etykietę')
+plt.show()
+#%%
+correlation = df[['label', 'word_count', 'avg_word_len']].corr()
+mask = np.zeros_like(correlation, dtype=np.bool)
+mask[np.triu_indices_from(mask)] = True
+plt.figure(figsize=(50,30))
+plt.xticks(fontsize=40)
+plt.yticks(fontsize=40)
+sns.heatmap(correlation, cmap='coolwarm', annot=True, annot_kws={"size": 40}, linewidths=10, vmin=-1.5, mask=mask)
+#%%
 # wordcloud
 
 positive_revs=True
-negative_revs=True
+negative_revs=False
 
 if positive_revs==negative_revs==False:
     raise KeyError("Cannot filter out both positive and negative")
@@ -104,6 +149,8 @@ counter=Counter(lista_slow)
 # deleting the word być as it doesn't add anything interesting to the picture
 del counter["być"]
 
+counter = dict(counter.most_common(n=15))
+
 wordcloud = WordCloud(width = 800, height = 800, 
                 background_color ='black',
                 min_font_size = 10, colormap=colormap, collocations=False).generate_from_frequencies(counter) 
@@ -116,4 +163,13 @@ plt.tight_layout(pad = 0)
   
 plt.show() 
 # %%
+most=counter.most_common()
 
+x, y= [], []
+for word,count in most[:20]:
+
+    x.append(word)
+    y.append(count)
+        
+sns.barplot(x=y,y=x, color='navy')
+# %%

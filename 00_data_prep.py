@@ -2,6 +2,10 @@
 import pandas as pd
 import os
 from langdetect import detect
+from pandas.core.reshape.reshape import unstack
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 # %%
 ## Setup
 in_dir = 'data'
@@ -50,13 +54,15 @@ df_text
 # range of dates
 df_text.loc[df_text['type'] == 'publishedDate']['value'].dropna().sort_values()
 
+
+#%%
 # how many restaurants
 df_text['name'].nunique()
 # %%
 # some cleaning up
 df_text.set_index(['name', 'id'], inplace=True)
 
-cols_to_keep=['rating', 'text', 'title'] #,'userLocation'
+cols_to_keep=['rating', 'text', 'title', 'publishedDate'] #,'userLocation'
 df_text_clean = df_text[df_text['type'].isin(cols_to_keep)]
 df_text_clean
 # %%
@@ -73,6 +79,22 @@ df_text_clean['lang'] = df_text_clean['review'].apply(detect)
 df_pl = df_text_clean[df_text_clean['lang'] == 'pl']
 df_pl.drop(columns='lang', inplace=True)
 # and done
+
+#%%
+# rating distribution in time
+df_pl['publishedDate'] = pd.to_datetime(df_pl['publishedDate'])
+in_time = df_pl.dropna().groupby(['publishedDate', 'rating'], as_index=False).count()
+df_pl.drop(columns=['publishedDate'], inplace=True)
+in_time['rating'] = in_time['rating'].astype('int')
+in_time
+#%%
+plt.rcParams["figure.figsize"] = (15,4)
+sns.set_style('whitegrid')
+sns.lineplot(data=in_time, x='publishedDate', y='review', hue='rating', legend=False)
+plt.legend(in_time['rating'])
+plt.title('Rozkład ocen w czasie')
+plt.show()
 # %%
 out_df = 'prepped.csv'
 df_pl.to_csv(os.path.join(out_dir, out_df))
+# %%
